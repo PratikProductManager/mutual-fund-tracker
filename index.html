@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Mutual Fund Tracker</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #94a3b8;
+    --indigo: #4f46e5;
+    --indigo-dark: #4338ca;
+    --green: #059669;
+    --red: #e11d48;
+    --amber-bg: #fffbeb;
+    --amber-border: #fde68a;
+    --amber-text: #92400e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .btn-row { display: flex; gap: 8px; }
+  button { font-family: inherit; cursor: pointer; border: none; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  }
+  .btn-primary { background: var(--indigo); color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .btn-primary:hover { background: var(--indigo-dark); }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #f1f5f9; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+  @media (min-width: 640px) { .summary-grid { grid-template-columns: repeat(4, 1fr); } }
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .summary-value { font-size: 17px; font-weight: 700; }
+  .summary-sub { font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  .empty-state { background: white; border: 1px dashed #cbd5e1; border-radius: 16px; padding: 60px 20px; text-align: center; color: var(--muted); }
+
+  .category { background: var(--card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .cat-header { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: transparent; }
+  .cat-header:hover { background: #f8fafc; }
+  .cat-left { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .cat-count { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .cat-right { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .chevron { color: var(--muted); transition: transform 0.15s; }
+
+  .fund-row { padding: 14px 18px; border-top: 1px solid #f1f5f9; }
+  .fund-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .fund-name { font-weight: 600; font-size: 13.5px; }
+  .fund-tag { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; background: #f1f5f9; color: var(--muted); padding: 2px 6px; border-radius: 5px; margin-left: 6px; }
+  .fund-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .fund-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .link-btn { font-size: 12px; color: var(--indigo); font-weight: 600; background: none; }
+  .icon-btn { color: #cbd5e1; background: none; padding: 2px; }
+  .icon-btn:hover { color: var(--red); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  @media (min-width: 500px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+  .stat-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .mini-stat { background: #f8fafc; border-radius: 8px; padding: 8px 10px; }
+  .mini-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+  .mini-value { font-size: 13.5px; font-weight: 700; margin-top: 2px; }
+  .mini-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  .details-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+  .manual-box, .date-box { background: #f8fafc; border-radius: 10px; padding: 12px; margin-top: 8px; }
+  .manual-title { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 8px; }
+  .inline-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .field label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .field input, select { padding: 7px 9px; font-size: 13px; border: 1px solid var(--border); border-radius: 7px; font-family: inherit; }
+  .field input { width: 110px; }
+  .small-note { font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+
+  .warn-banner { font-size: 12px; background: var(--amber-bg); border: 1px solid var(--amber-border); color: var(--amber-text); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; }
+  .error-text { font-size: 12px; color: var(--red); margin-top: 6px; }
+  .loading-text { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+  .modal { background: white; border-radius: 16px; width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { position: sticky; top: 0; background: white; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; }
+  .modal-header h2 { font-size: 15px; margin: 0; }
+  .modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #f1f5f9; }
+  .modal-footer .btn { width: 100%; justify-content: center; }
+  .close-btn { background: none; color: var(--muted); font-size: 18px; line-height: 1; }
+  .close-btn:hover { color: var(--text); }
+
+  .mode-toggle { display: flex; gap: 4px; background: #f1f5f9; border-radius: 9px; padding: 4px; }
+  .mode-toggle button { flex: 1; font-size: 12px; font-weight: 600; padding: 7px; border-radius: 6px; background: transparent; color: var(--muted); }
+  .mode-toggle button.active { background: white; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+  .form-group input, .form-group select { width: 100%; padding: 9px 11px; font-size: 13px; border: 1px solid var(--border); border-radius: 9px; font-family: inherit; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  .search-box { display: flex; gap: 8px; }
+  .search-box input { flex: 1; }
+  .search-results { margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; max-height: 180px; overflow-y: auto; }
+  .search-result-item { display: block; width: 100%; text-align: left; padding: 8px 10px; font-size: 12px; background: white; border-bottom: 1px solid #f1f5f9; }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: #f8fafc; }
+  .search-result-item.selected { background: #eef2ff; }
+  .selected-banner { font-size: 12px; background: #eef2ff; color: var(--indigo); border-radius: 9px; padding: 8px 10px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const CATEGORIES = [
+  "Flexi Cap Fund",
+  "Multi Asset Allocation Fund",
+  "Large Cap Fund",
+  "Mid Cap Fund",
+  "Small Cap Fund",
+  "GIFT City Fund",
+];
+const STORAGE_KEY = "mf_tracker_funds_v1";
+
+// ---------- state ----------
+let funds = [];
+let navCache = {}; // schemeCode -> {history, error}
+let expandedCats = new Set(CATEGORIES);
+let expandedFunds = new Set();
+let showAddModal = false;
+let lastFetched = null;
+let refreshing = false;
+
+// add-modal local state
+let addMode = "search";
+let searchQuery = "";
+let searchResults = [];
+let searching = false;
+let searchError = null;
+let selectedScheme = null;
+let formCategory = CATEGORIES[0];
+let formExpenseRatio = "";
+let formUnits = "";
+let formAvgNav = "";
+let formManualName = "";
+let formWeightedDate = "";
+
+// ---------- persistence ----------
+function loadFunds() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    funds = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    funds = [];
+  }
+}
+function saveFunds() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(funds));
+  } catch (e) {
+    console.error("Could not save", e);
+  }
+}
+
+// ---------- helpers ----------
+function fmtINR(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+}
+function fmtPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+}
+function parseMfDate(s) {
+  const [d, m, y] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function navOnOrBefore(history, targetDate) {
+  for (let i = 0; i < history.length; i++) {
+    const d = parseMfDate(history[i].date);
+    if (d <= targetDate) return parseFloat(history[i].nav);
+  }
+  return null;
+}
+function computeXIRR(investedValue, currentValue, weightedAvgDate) {
+  if (!investedValue || !currentValue || !weightedAvgDate) return null;
+  const today = new Date();
+  const days = Math.round((today - weightedAvgDate) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return null;
+  const years = days / 365;
+  const ratio = currentValue / investedValue;
+  if (ratio <= 0) return null;
+  return (Math.pow(ratio, 1 / years) - 1) * 100;
+}
+function computeReturns(history) {
+  if (!history || history.length === 0) return {};
+  const latest = parseFloat(history[0].nav);
+  const latestDate = parseMfDate(history[0].date);
+  const prevNav = history.length > 1 ? parseFloat(history[1].nav) : null;
+
+  const oneMonthAgo = new Date(latestDate); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  const oneYearAgo = new Date(latestDate); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const threeYearAgo = new Date(latestDate); threeYearAgo.setFullYear(threeYearAgo.getFullYear() - 3);
+
+  const navM = navOnOrBefore(history, oneMonthAgo);
+  const navY = navOnOrBefore(history, oneYearAgo);
+  const nav3Y = navOnOrBefore(history, threeYearAgo);
+
+  return {
+    latestNav: latest,
+    latestDate: history[0].date,
+    dayChangePct: prevNav ? ((latest - prevNav) / prevNav) * 100 : null,
+    dayChangeAbs: prevNav ? latest - prevNav : null,
+    monthRet: navM ? ((latest - navM) / navM) * 100 : null,
+    yearRet: navY ? ((latest - navY) / navY) * 100 : null,
+    threeYearRet: nav3Y ? (Math.pow(latest / nav3Y, 1 / 3) - 1) * 100 : null,
+  };
+}
+
+async function fetchNavHistory(schemeCode) {
+  try {
+    const resp = await fetch(`https://api.mfapi.in/mf/${schemeCode}`);
+    if (!resp.ok) throw new Error("fetch failed");
+    const data = await resp.json();
+    if (!data || !data.data || data.data.length === 0) throw new Error("no data");
+    return { history: data.data, error: null };
+  } catch (e) {
+    return { history: null, error: "Could not fetch NAV" };
+  }
+}
+
+async function refreshAll() {
+  refreshing = true;
+  render();
+  const apiFunds = funds.filter(f => !f.isManual && f.schemeCode);
+  for (const f of apiFunds) {
+    const r = await fetchNavHistory(f.schemeCode);
+    navCache[f.schemeCode] = r;
+  }
+  lastFetched = new Date();
+  refreshing = false;
+  render();
+}
+
+async function doSearch() {
+  const q = searchQuery.trim();
+  if (!q) return;
+  searching = true;
+  searchError = null;
+  searchResults = [];
+  render();
+  try {
+    const resp = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(q)}`);
+    if (!resp.ok) {
+      searchError = `Search failed (status ${resp.status}).`;
+    } else {
+      const data = await resp.json();
+      searchResults = Array.isArray(data) ? data.slice(0, 15) : [];
+      if (searchResults.length === 0) searchError = `No matches for "${q}". Try a different term.`;
+    }
+  } catch (e) {
+    searchError = `Network error: ${e.message || "unknown"}.`;
+  } finally {
+    searching = false;
+    render();
+  }
+}
+
+function resetAddForm() {
+  addMode = "search";
+  searchQuery = "";
+  searchResults = [];
+  searching = false;
+  searchError = null;
+  selectedScheme = null;
+  formCategory = CATEGORIES[0];
+  formExpenseRatio = "";
+  formUnits = "";
+  formAvgNav = "";
+  formManualName = "";
+  formWeightedDate = "";
+}
+
+function addFund() {
+  const base = {
+    id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+    category: formCategory,
+    expenseRatio: parseFloat(formExpenseRatio),
+    units: parseFloat(formUnits),
+    avgNav: parseFloat(formAvgNav),
+    weightedAvgDate: formWeightedDate || null,
+  };
+  let fund;
+  if (addMode === "search") {
+    if (!selectedScheme) return;
+    fund = { ...base, name: selectedScheme.schemeName, schemeCode: selectedScheme.schemeCode, isManual: false };
+  } else {
+    if (!formManualName.trim()) return;
+    fund = { ...base, name: formManualName.trim(), isManual: true, manualHistory: [] };
+  }
+  funds.push(fund);
+  saveFunds();
+  showAddModal = false;
+  resetAddForm();
+  render();
+  if (!fund.isManual) {
+    fetchNavHistory(fund.schemeCode).then(r => { navCache[fund.schemeCode] = r; render(); });
+  }
+}
+
+function removeFund(id) {
+  funds = funds.filter(f => f.id !== id);
+  saveFunds();
+  render();
+}
+
+function updateManualNav(id, navValue, dateValue) {
+  const [y, m, d] = dateValue.split("-");
+  const mfFormat = `${d}-${m}-${y}`;
+  funds = funds.map(f => {
+    if (f.id !== id) return f;
+    const history = (f.manualHistory || []).filter(h => h.date !== mfFormat);
+    history.unshift({ date: mfFormat, nav: navValue });
+    history.sort((a, b) => parseMfDate(b.date) - parseMfDate(a.date));
+    return { ...f, manualHistory: history };
+  });
+  saveFunds();
+  render();
+}
+
+function updateWeightedDate(id, dateValue) {
+  funds = funds.map(f => f.id === id ? { ...f, weightedAvgDate: dateValue } : f);
+  saveFunds();
+  render();
+}
+
+function toggleCat(cat) {
+  if (expandedCats.has(cat)) expandedCats.delete(cat); else expandedCats.add(cat);
+  render();
+}
+function toggleFundExpand(id) {
+  if (expandedFunds.has(id)) expandedFunds.delete(id); else expandedFunds.add(id);
+  render();
+}
+
+// ---------- enrichment ----------
+function enrichFund(f) {
+  let returns = {};
+  let fundError = null;
+  if (f.isManual) {
+    returns = computeReturns(f.manualHistory || []);
+  } else {
+    const cached = navCache[f.schemeCode];
+    if (cached) {
+      if (cached.error) fundError = cached.error;
+      else returns = computeReturns(cached.history);
+    }
+  }
+  const currentNav = returns.latestNav ?? null;
+  const currentValue = currentNav !== null ? currentNav * f.units : null;
+  const investedValue = f.avgNav * f.units;
+  const gain = currentValue !== null ? currentValue - investedValue : null;
+  const gainPct = currentValue !== null && investedValue ? (gain / investedValue) * 100 : null;
+  const dayChangeValue = (returns.dayChangeAbs ?? null) !== null ? returns.dayChangeAbs * f.units : null;
+  const xirr = f.weightedAvgDate && currentValue !== null
+    ? computeXIRR(investedValue, currentValue, new Date(f.weightedAvgDate + "T00:00:00"))
+    : null;
+  return { ...f, returns, currentValue, investedValue, gain, gainPct, dayChangeValue, xirr, fundError };
+}
+
+// ---------- render ----------
+function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
+
+function render() {
+  const app = document.getElementById("app");
+  const enriched = funds.map(enrichFund);
+  const totals = enriched.reduce((acc, f) => {
+    if (f.investedValue) acc.invested += f.investedValue;
+    if (f.currentValue) acc.current += f.currentValue;
+    if (f.dayChangeValue) acc.dayChange += f.dayChangeValue;
+    return acc;
+  }, { invested: 0, current: 0, dayChange: 0 });
+  const totalGain = totals.current - totals.invested;
+  const totalGainPct = totals.invested ? (totalGain / totals.invested) * 100 : 0;
+  const prevTotal = totals.current - totals.dayChange;
+  const totalDayPct = prevTotal ? (totals.dayChange / prevTotal) * 100 : 0;
+
+  const byCat = CATEGORIES.map(cat => ({ cat, list: enriched.filter(f => f.category === cat) })).filter(g => g.list.length > 0);
+
+  let html = `
+    <div class="header">
+      <div>
+        <h1>My Mutual Fund Tracker</h1>
+        <div class="subtitle">${lastFetched ? "NAV updated " + lastFetched.toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"}) : "Live NAV via mfapi.in"}</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="refreshBtn" ${refreshing ? "disabled" : ""}>${refreshing ? "Refreshing…" : "⟳ Refresh"}</button>
+        <button class="btn btn-primary" id="addBtn">+ Add Fund</button>
+      </div>
+    </div>
+  `;
+
+  if (funds.length > 0) {
+    html += `
+      <div class="summary-grid">
+        <div class="summary-card"><div class="summary-label">Invested</div><div class="summary-value">₹${fmtINR(totals.invested)}</div></div>
+        <div class="summary-card"><div class="summary-label">Current Value</div><div class="summary-value">₹${fmtINR(totals.current)}</div></div>
+        <div class="summary-card"><div class="summary-label">Total Gain</div><div class="summary-value">₹${fmtINR(totalGain)}</div><div class="summary-sub ${totalGain>=0?'pos':'neg'}">${fmtPct(totalGainPct)}</div></div>
+        <div class="summary-card"><div class="summary-label">Today</div><div class="summary-value">₹${fmtINR(totals.dayChange)}</div><div class="summary-sub ${totals.dayChange>=0?'pos':'neg'}">${fmtPct(totalDayPct)}</div></div>
+      </div>
+    `;
+  }
+
+  if (funds.length === 0) {
+    html += `<div class="empty-state"><p>No funds added yet. Start by adding your first fund.</p>
+      <button class="btn btn-primary" id="emptyAddBtn" style="margin-top:10px;">+ Add Fund</button></div>`;
+  }
+
+  byCat.forEach(({ cat, list }) => {
+    const catInvested = list.reduce((s, f) => s + (f.investedValue || 0), 0);
+    const catCurrent = list.reduce((s, f) => s + (f.currentValue || 0), 0);
+    const catGainPct = catInvested ? ((catCurrent - catInvested) / catInvested) * 100 : null;
+    const isExp = expandedCats.has(cat);
+    html += `<div class="category">
+      <button class="cat-header" data-cat="${cat}">
+        <span class="cat-left"><span class="chevron">${isExp ? "▾" : "▸"}</span> ${cat} <span class="cat-count">(${list.length})</span></span>
+        <span class="cat-right"><span>₹${fmtINR(catCurrent)}</span>${catGainPct !== null ? `<span class="${catGainPct>=0?'pos':'neg'}" style="font-weight:700;">${fmtPct(catGainPct)}</span>` : ""}</span>
+      </button>`;
+    if (isExp) {
+      list.forEach(f => { html += renderFundRow(f); });
+    }
+    html += `</div>`;
+  });
+
+  if (showAddModal) html += renderModal();
+
+  app.innerHTML = html;
+  attachHandlers();
+}
+
+function renderFundRow(f) {
+  const r = f.returns || {};
+  const hasData = r.latestNav !== undefined && r.latestNav !== null;
+  const isExp = expandedFunds.has(f.id);
+  let html = `<div class="fund-row">
+    <div class="fund-top">
+      <div>
+        <div class="fund-name">${f.name}${f.isManual ? '<span class="fund-tag">Manual</span>' : ''}</div>
+        <div class="fund-meta">${f.units} units @ avg ₹${fmtINR(f.avgNav)} · Expense ratio ${f.expenseRatio}%</div>
+      </div>
+      <div class="fund-actions">
+        <button class="link-btn" data-toggle-fund="${f.id}">${isExp ? "Less" : "Details"}</button>
+        <button class="icon-btn" data-remove="${f.id}" title="Remove">✕</button>
+      </div>
+    </div>`;
+
+  if (f.fundError) html += `<div class="error-text">${f.fundError} — check the scheme code.</div>`;
+  if (!f.isManual && !hasData && !f.fundError) html += `<div class="loading-text">Loading NAV…</div>`;
+
+  if (hasData) {
+    html += `<div class="stat-grid">
+      <div class="mini-stat"><div class="mini-label">NAV</div><div class="mini-value">₹${fmtINR(r.latestNav)}</div><div class="mini-sub">${r.latestDate}</div></div>
+      <div class="mini-stat"><div class="mini-label">Today</div><div class="mini-value ${r.dayChangePct>=0?'pos':'neg'}">${r.dayChangePct!=null?fmtPct(r.dayChangePct):"—"}</div></div>
+      <div class="mini-stat"><div class="mini-label">Current Value</div><div class="mini-value">₹${fmtINR(f.currentValue)}</div></div>
+      <div class="mini-stat"><div class="mini-label">Gain/Loss</div><div class="mini-value ${f.gain>=0?'pos':'neg'}">${fmtPct(f.gainPct)}</div><div class="mini-sub">₹${fmtINR(f.gain)}</div></div>
+    </div>`;
+  }
+
+  if (isExp) {
+    html += `<div class="details-panel">`;
+    if (hasData) {
+      html += `<div class="stat-grid-3">
+        <div class="mini-stat"><div class="mini-label">1 Month</div><div class="mini-value ${r.monthRet>=0?'pos':'neg'}">${fmtPct(r.monthRet)}</div></div>
+        <div class="mini-stat"><div class="mini-label">1 Year</div><div class="mini-value ${r.yearRet>=0?'pos':'neg'}">${fmtPct(r.yearRet)}</div></div>
+        <div class="mini-stat"><div class="mini-label">3 Year (CAGR)</div><div class="mini-value ${r.threeYearRet>=0?'pos':'neg'}">${fmtPct(r.threeYearRet)}</div></div>
+      </div>`;
+    }
+    if (f.weightedAvgDate && f.xirr !== null && f.xirr !== undefined) {
+      html += `<div class="mini-stat" style="margin-bottom:10px;"><div class="mini-label">XIRR (since ${f.weightedAvgDate})</div><div class="mini-value ${f.xirr>=0?'pos':'neg'}">${fmtPct(f.xirr)}</div></div>`;
+    } else {
+      html += `<div class="warn-banner">Add a weighted-average investment date to see XIRR.</div>`;
+    }
+    html += `<div class="date-box">
+      <div class="manual-title">Weighted-average investment date (for XIRR)</div>
+      <div class="inline-form">
+        <div class="field"><label>Date</label><input type="date" id="wdate-${f.id}" value="${f.weightedAvgDate || ''}" /></div>
+        <button class="btn btn-primary" data-save-wdate="${f.id}">Save</button>
+        <span class="small-note">Units-weighted average date of all purchases</span>
+      </div>
+    </div>`;
+
+    if (f.isManual) {
+      html += `<div class="manual-box">
+        <div class="manual-title">Update NAV manually</div>
+        <div class="inline-form">
+          <div class="field"><label>NAV (₹)</label><input type="number" step="0.0001" id="mnav-${f.id}" placeholder="e.g. 25.4321" /></div>
+          <div class="field"><label>Date</label><input type="date" id="mdate-${f.id}" value="${new Date().toISOString().slice(0,10)}" /></div>
+          <button class="btn btn-primary" data-save-manual="${f.id}">Save</button>
+        </div>
+        ${(!f.manualHistory || f.manualHistory.length === 0) ? '<div class="small-note">No NAV entries yet — add today\'s NAV to get started.</div>' : ''}
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function renderModal() {
+  return `
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header"><h2>Add Fund</h2><button class="close-btn" id="closeModal">✕</button></div>
+      <div class="modal-body">
+        <div class="mode-toggle">
+          <button class="${addMode==='search'?'active':''}" data-mode="search">Search (auto NAV)</button>
+          <button class="${addMode==='manual'?'active':''}" data-mode="manual">Manual (e.g. GIFT City)</button>
+        </div>
+        ${addMode === 'search' ? `
+          <div class="form-group">
+            <label>Search fund name</label>
+            <div class="search-box">
+              <input type="text" id="searchInput" placeholder="e.g. Parag Parikh Flexi Cap" value="${searchQuery}" />
+              <button class="btn btn-secondary" id="searchBtn" ${searching ? 'disabled' : ''}>🔍</button>
+            </div>
+            ${searchError ? `<div class="error-text">${searchError}</div>` : ''}
+            ${searchResults.length > 0 ? `<div class="search-results">${searchResults.map(s => `
+              <button class="search-result-item ${selectedScheme && selectedScheme.schemeCode===s.schemeCode ? 'selected':''}" data-scheme='${JSON.stringify(s).replace(/'/g, "&apos;")}'>${s.schemeName}</button>
+            `).join('')}</div>` : ''}
+            ${selectedScheme ? `<div class="selected-banner">Selected: ${selectedScheme.schemeName}</div>` : ''}
+          </div>
+        ` : `
+          <div class="form-group">
+            <label>Fund name</label>
+            <input type="text" id="manualNameInput" placeholder="e.g. ABC GIFT City Fund" value="${formManualName}" />
+            <div class="hint">You'll add NAV values manually after creating the fund.</div>
+          </div>
+        `}
+        <div class="form-group">
+          <label>Category</label>
+          <select id="categorySelect">${CATEGORIES.map(c => `<option value="${c}" ${c===formCategory?'selected':''}>${c}</option>`).join('')}</select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Expense Ratio (%)</label><input type="number" step="0.01" id="erInput" placeholder="e.g. 0.65" value="${formExpenseRatio}" /></div>
+          <div class="form-group"><label>Units Held</label><input type="number" step="0.0001" id="unitsInput" placeholder="e.g. 150.5" value="${formUnits}" /></div>
+        </div>
+        <div class="form-group"><label>Average Purchase NAV (₹)</label><input type="number" step="0.0001" id="avgNavInput" placeholder="e.g. 42.10" value="${formAvgNav}" /></div>
+        <div class="form-group">
+          <label>Weighted-Avg Investment Date <span style="color:var(--muted); font-weight:400;">(for XIRR, optional)</span></label>
+          <input type="date" id="wdateInput" value="${formWeightedDate}" />
+          <div class="hint">If you invested via multiple SIPs/lump sums, use the units-weighted average date.</div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary" id="submitAdd">Add Fund</button></div>
+    </div>
+  </div>`;
+}
+
+function attachHandlers() {
+  const refreshBtn = document.getElementById("refreshBtn");
+  if (refreshBtn) refreshBtn.onclick = refreshAll;
+
+  const addBtn = document.getElementById("addBtn");
+  if (addBtn) addBtn.onclick = () => { showAddModal = true; render(); };
+  const emptyAddBtn = document.getElementById("emptyAddBtn");
+  if (emptyAddBtn) emptyAddBtn.onclick = () => { showAddModal = true; render(); };
+
+  document.querySelectorAll("[data-cat]").forEach(b => {
+    b.onclick = () => toggleCat(b.getAttribute("data-cat"));
+  });
+  document.querySelectorAll("[data-toggle-fund]").forEach(b => {
+    b.onclick = () => toggleFundExpand(b.getAttribute("data-toggle-fund"));
+  });
+  document.querySelectorAll("[data-remove]").forEach(b => {
+    b.onclick = () => removeFund(b.getAttribute("data-remove"));
+  });
+  document.querySelectorAll("[data-save-manual]").forEach(b => {
+    b.onclick = () => {
+      const id = b.getAttribute("data-save-manual");
+      const navVal = parseFloat(document.getElementById(`mnav-${id}`).value);
+      const dateVal = document.getElementById(`mdate-${id}`).value;
+      if (!isNaN(navVal) && dateVal) updateManualNav(id, navVal, dateVal);
+    };
+  });
+  document.querySelectorAll("[data-save-wdate]").forEach(b => {
+    b.onclick = () => {
+      const id = b.getAttribute("data-save-wdate");
+      const dateVal = document.getElementById(`wdate-${id}`).value;
+      if (dateVal) updateWeightedDate(id, dateVal);
+    };
+  });
+
+  // modal handlers
+  const overlay = document.getElementById("modalOverlay");
+  if (overlay) {
+    overlay.onclick = (e) => { if (e.target === overlay) { showAddModal = false; resetAddForm(); render(); } };
+  }
+  const closeModal = document.getElementById("closeModal");
+  if (closeModal) closeModal.onclick = () => { showAddModal = false; resetAddForm(); render(); };
+
+  document.querySelectorAll("[data-mode]").forEach(b => {
+    b.onclick = () => { addMode = b.getAttribute("data-mode"); render(); };
+  });
+
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.oninput = (e) => { searchQuery = e.target.value; };
+    searchInput.onkeydown = (e) => { if (e.key === "Enter") { searchQuery = e.target.value; doSearch(); } };
+    searchInput.focus();
+    searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+  }
+  const searchBtn = document.getElementById("searchBtn");
+  if (searchBtn) searchBtn.onclick = () => { searchQuery = document.getElementById("searchInput").value; doSearch(); };
+
+  document.querySelectorAll("[data-scheme]").forEach(b => {
+    b.onclick = () => {
+      selectedScheme = JSON.parse(b.getAttribute("data-scheme").replace(/&apos;/g, "'"));
+      render();
+    };
+  });
+
+  const manualNameInput = document.getElementById("manualNameInput");
+  if (manualNameInput) {
+    manualNameInput.oninput = (e) => { formManualName = e.target.value; };
+    manualNameInput.focus();
+  }
+  const categorySelect = document.getElementById("categorySelect");
+  if (categorySelect) categorySelect.onchange = (e) => { formCategory = e.target.value; };
+  const erInput = document.getElementById("erInput");
+  if (erInput) erInput.oninput = (e) => { formExpenseRatio = e.target.value; };
+  const unitsInput = document.getElementById("unitsInput");
+  if (unitsInput) unitsInput.oninput = (e) => { formUnits = e.target.value; };
+  const avgNavInput = document.getElementById("avgNavInput");
+  if (avgNavInput) avgNavInput.oninput = (e) => { formAvgNav = e.target.value; };
+  const wdateInput = document.getElementById("wdateInput");
+  if (wdateInput) wdateInput.oninput = (e) => { formWeightedDate = e.target.value; };
+
+  const submitAdd = document.getElementById("submitAdd");
+  if (submitAdd) submitAdd.onclick = addFund;
+}
+
+// ---------- init ----------
+loadFunds();
+render();
+if (funds.length > 0) refreshAll();
+</script>
+</body>
+</html>
