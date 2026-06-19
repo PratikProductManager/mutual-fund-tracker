@@ -157,7 +157,7 @@ let formExpenseRatio = "";
 let formUnits = "";
 let formAvgNav = "";
 let formManualName = "";
-let formWeightedDate = "";
+let formWeightedDays = "";
 
 // ---------- persistence ----------
 function loadFunds() {
@@ -289,7 +289,7 @@ function resetAddForm() {
   formUnits = "";
   formAvgNav = "";
   formManualName = "";
-  formWeightedDate = "";
+  formWeightedDays = "";
 }
 
 function addFund() {
@@ -299,7 +299,7 @@ function addFund() {
     expenseRatio: parseFloat(formExpenseRatio),
     units: parseFloat(formUnits),
     avgNav: parseFloat(formAvgNav),
-    weightedAvgDate: formWeightedDate || null,
+    weightedAvgDays: formWeightedDays ? parseFloat(formWeightedDays) : null,
   };
   let fund;
   if (addMode === "search") {
@@ -339,8 +339,8 @@ function updateManualNav(id, navValue, dateValue) {
   render();
 }
 
-function updateWeightedDate(id, dateValue) {
-  funds = funds.map(f => f.id === id ? { ...f, weightedAvgDate: dateValue } : f);
+function updateWeightedDays(id, daysValue) {
+  funds = funds.map(f => f.id === id ? { ...f, weightedAvgDays: daysValue } : f);
   saveFunds();
   render();
 }
@@ -373,8 +373,8 @@ function enrichFund(f) {
   const gain = currentValue !== null ? currentValue - investedValue : null;
   const gainPct = currentValue !== null && investedValue ? (gain / investedValue) * 100 : null;
   const dayChangeValue = (returns.dayChangeAbs ?? null) !== null ? returns.dayChangeAbs * f.units : null;
-  const xirr = f.weightedAvgDate && currentValue !== null
-    ? computeXIRR(investedValue, currentValue, new Date(f.weightedAvgDate + "T00:00:00"))
+  const xirr = f.weightedAvgDays
+    ? computeXIRR(investedValue, currentValue, parseFloat(f.weightedAvgDays))
     : null;
   return { ...f, returns, currentValue, investedValue, gain, gainPct, dayChangeValue, xirr, fundError };
 }
@@ -486,17 +486,17 @@ function renderFundRow(f) {
         <div class="mini-stat"><div class="mini-label">3 Year (CAGR)</div><div class="mini-value ${r.threeYearRet>=0?'pos':'neg'}">${fmtPct(r.threeYearRet)}</div></div>
       </div>`;
     }
-    if (f.weightedAvgDate && f.xirr !== null && f.xirr !== undefined) {
-      html += `<div class="mini-stat" style="margin-bottom:10px;"><div class="mini-label">XIRR (since ${f.weightedAvgDate})</div><div class="mini-value ${f.xirr>=0?'pos':'neg'}">${fmtPct(f.xirr)}</div></div>`;
+    if (f.weightedAvgDays && f.xirr !== null && f.xirr !== undefined) {
+      html += `<div class="mini-stat" style="margin-bottom:10px;"><div class="mini-label">XIRR (over ${f.weightedAvgDays} days)</div><div class="mini-value ${f.xirr>=0?'pos':'neg'}">${fmtPct(f.xirr)}</div></div>`;
     } else {
-      html += `<div class="warn-banner">Add a weighted-average investment date to see XIRR.</div>`;
+      html += `<div class="warn-banner">Add a weighted-average number of days to see XIRR.</div>`;
     }
     html += `<div class="date-box">
-      <div class="manual-title">Weighted-average investment date (for XIRR)</div>
+      <div class="manual-title">Weighted-average holding period (for XIRR)</div>
       <div class="inline-form">
-        <div class="field"><label>Date</label><input type="date" id="wdate-${f.id}" value="${f.weightedAvgDate || ''}" /></div>
-        <button class="btn btn-primary" data-save-wdate="${f.id}">Save</button>
-        <span class="small-note">Units-weighted average date of all purchases</span>
+        <div class="field"><label>Days</label><input type="number" min="1" step="1" id="wdays-${f.id}" value="${f.weightedAvgDays || ''}" placeholder="e.g. 180" /></div>
+        <button class="btn btn-primary" data-save-wdays="${f.id}">Save</button>
+        <span class="small-note">Units-weighted average no. of days since purchase</span>
       </div>
     </div>`;
 
@@ -558,9 +558,9 @@ function renderModal() {
         </div>
         <div class="form-group"><label>Average Purchase NAV (₹)</label><input type="number" step="0.0001" id="avgNavInput" placeholder="e.g. 42.10" value="${formAvgNav}" /></div>
         <div class="form-group">
-          <label>Weighted-Avg Investment Date <span style="color:var(--muted); font-weight:400;">(for XIRR, optional)</span></label>
-          <input type="date" id="wdateInput" value="${formWeightedDate}" />
-          <div class="hint">If you invested via multiple SIPs/lump sums, use the units-weighted average date.</div>
+          <label>Weighted-Avg Holding Period (Days) <span style="color:var(--muted); font-weight:400;">(for XIRR, optional)</span></label>
+          <input type="number" min="1" step="1" id="wdaysInput" placeholder="e.g. 180" value="${formWeightedDays}" />
+          <div class="hint">If you invested via multiple SIPs/lump sums, use the units-weighted average number of days since purchase.</div>
         </div>
       </div>
       <div class="modal-footer"><button class="btn btn-primary" id="submitAdd">Add Fund</button></div>
@@ -594,11 +594,11 @@ function attachHandlers() {
       if (!isNaN(navVal) && dateVal) updateManualNav(id, navVal, dateVal);
     };
   });
-  document.querySelectorAll("[data-save-wdate]").forEach(b => {
+  document.querySelectorAll("[data-save-wdays]").forEach(b => {
     b.onclick = () => {
-      const id = b.getAttribute("data-save-wdate");
-      const dateVal = document.getElementById(`wdate-${id}`).value;
-      if (dateVal) updateWeightedDate(id, dateVal);
+      const id = b.getAttribute("data-save-wdays");
+      const daysVal = parseFloat(document.getElementById(`wdays-${id}`).value);
+      if (!isNaN(daysVal) && daysVal > 0) updateWeightedDays(id, daysVal);
     };
   });
 
@@ -644,8 +644,8 @@ function attachHandlers() {
   if (unitsInput) unitsInput.oninput = (e) => { formUnits = e.target.value; };
   const avgNavInput = document.getElementById("avgNavInput");
   if (avgNavInput) avgNavInput.oninput = (e) => { formAvgNav = e.target.value; };
-  const wdateInput = document.getElementById("wdateInput");
-  if (wdateInput) wdateInput.oninput = (e) => { formWeightedDate = e.target.value; };
+  const wdaysInput = document.getElementById("wdaysInput");
+  if (wdaysInput) wdaysInput.oninput = (e) => { formWeightedDays = e.target.value; };
 
   const submitAdd = document.getElementById("submitAdd");
   if (submitAdd) submitAdd.onclick = addFund;
