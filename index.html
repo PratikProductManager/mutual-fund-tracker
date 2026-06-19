@@ -196,12 +196,9 @@ function navOnOrBefore(history, targetDate) {
   }
   return null;
 }
-function computeXIRR(investedValue, currentValue, weightedAvgDate) {
-  if (!investedValue || !currentValue || !weightedAvgDate) return null;
-  const today = new Date();
-  const days = Math.round((today - weightedAvgDate) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return null;
-  const years = days / 365;
+function computeXIRR(investedValue, currentValue, weightedAvgDays) {
+  if (!investedValue || !currentValue || !weightedAvgDays || weightedAvgDays <= 0) return null;
+  const years = weightedAvgDays / 365;
   const ratio = currentValue / investedValue;
   if (ratio <= 0) return null;
   return (Math.pow(ratio, 1 / years) - 1) * 100;
